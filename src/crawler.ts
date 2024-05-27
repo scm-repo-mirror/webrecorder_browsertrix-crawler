@@ -1162,7 +1162,7 @@ self.__bx_behaviors.selectMainBehavior();
   }
 
   async doPostLoadActions(opts: WorkerState, saveOutput = false) {
-    const { page, cdp, data, workerid } = opts;
+    const { page, cdp, data, workerid, recorder } = opts;
     const { url } = data;
 
     if (!data.isHTMLPage) {
@@ -1191,7 +1191,7 @@ self.__bx_behaviors.selectMainBehavior();
 
     let textextract = null;
 
-    if (this.textWriter) {
+    if (data.isHTMLPage && this.textWriter) {
       textextract = new TextExtractViaSnapshot(cdp, {
         writer: this.textWriter,
         url,
@@ -1203,7 +1203,7 @@ self.__bx_behaviors.selectMainBehavior();
         this.params.text.includes("to-warc"),
       );
 
-      if (text !== null && (this.textInPages || saveOutput)) {
+      if (text && (this.textInPages || saveOutput)) {
         data.text = text;
       }
     }
@@ -1262,6 +1262,10 @@ self.__bx_behaviors.selectMainBehavior();
           await screenshots.takeFullPageFinal();
         }
       }
+    }
+
+    if (this.params.domSnapshot && recorder) {
+      await recorder.addDOMSnapshot(cdp);
     }
   }
 
@@ -2910,14 +2914,18 @@ self.__bx_behaviors.selectMainBehavior();
       id: id.toString(),
     });
 
-    const res = new Recorder({
+    const recorder = new Recorder({
       workerid: id,
       crawler: this,
       writer,
     });
 
-    this.browser.recorders.push(res);
-    return res;
+    if (this.params.domSnapshot) {
+      recorder.useDomSnapshot = true;
+    }
+
+    this.browser.recorders.push(recorder);
+    return recorder;
   }
 }
 
