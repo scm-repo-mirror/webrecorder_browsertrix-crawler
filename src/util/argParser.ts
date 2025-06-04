@@ -20,6 +20,7 @@ import {
   BxFunctionBindings,
   DEFAULT_CRAWL_ID_TEMPLATE,
 } from "./constants.js";
+import { collectOnlineSeedFile } from "./file_reader.js";
 import { ScopedSeed } from "./seeds.js";
 import { interpolateFilename } from "./storage.js";
 import { screenshotTypes } from "./screenshots.js";
@@ -778,7 +779,22 @@ class ArgParser {
     }
 
     if (argv.seedFile) {
-      const urlSeedFile = fs.readFileSync(argv.seedFile, "utf8");
+      let seedFilePath = argv.seedFile;
+      if (argv.seedFile.startsWith("http")) {
+        const filePromise = collectOnlineSeedFile(argv.seedFilePath as string);
+        filePromise
+          .then((value) => {
+            seedFilePath = value;
+          })
+          .catch((err) => {
+            logger.fatal("Error downloading online seed file", {
+              error: err.toString(),
+              url: argv.seedFilePath,
+            });
+          });
+      }
+
+      const urlSeedFile = fs.readFileSync(seedFilePath, "utf8");
       const urlSeedFileList = urlSeedFile.split("\n");
 
       if (typeof argv.seeds === "string") {
